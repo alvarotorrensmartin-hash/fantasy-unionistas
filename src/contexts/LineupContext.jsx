@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useState, useEffect } from "react";
 
 const LineupContext = createContext(null);
 
-const BUDGET = 100.0;
+const BUDGET = 50.0;
 const REQUIRED = { POR: 1, DEF: 2, MED: 2, DEL: 2 };
 
 export function LineupProvider({ children }) {
