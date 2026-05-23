@@ -5,6 +5,7 @@ import Ranking from "./pages/Ranking.jsx";
 import Lineup from "./pages/Lineup.jsx";
 import Competition from "./pages/Competition.jsx";
 import Admin from "./pages/Admin.jsx";
+import MyTeam from "./pages/MyTeam.jsx";
 
 import { LineupProvider, useLineup } from "./contexts/LineupContext.jsx";
 
@@ -33,31 +34,17 @@ function Nav() {
       </NavLink>
 
       <NavLink
-        to="/jugadores"
-        className={({ isActive }) => `${base} ${isActive ? active : idle}`}
-      >
-        Jugadores
-      </NavLink>
-
-      <NavLink
-        to="/alineacion"
-        className={({ isActive }) => `${base} ${isActive ? active : idle}`}
-      >
-        Alineación ({picks.length}/7 · {totals.cost.toFixed(1)}M)
-      </NavLink>
-
-      <NavLink
         to="/ranking"
         className={({ isActive }) => `${base} ${isActive ? active : idle}`}
       >
         Ranking
       </NavLink>
 
-      <NavLink
-        to="/admin"
-        className={({ isActive }) => `${base} ${isActive ? active : idle}`}
+       <NavLink
+         to="/mi-equipo"
+         className={({ isActive }) => `${base} ${isActive ? active : idle}`}
       >
-        Admin
+         Mi equipo
        </NavLink>
     </nav>
   );
@@ -100,6 +87,7 @@ export default function App() {
               <Route path="/ranking" element={<Ranking />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<p>404 — Página no encontrada</p>} />
+              <Route path="/mi-equipo" element={<MyTeam />} />
             </Routes>
           </div>
         </main>

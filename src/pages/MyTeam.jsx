@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { players } from "../data/players.js";
 import { competitions } from "../data/competitions.js";
-import PlayerCard from "../components/PlayerCard.jsx";
 import { supabase } from "../lib/supabaseClient.js";
+import PlayerCard from "../components/PlayerCard.jsx";
 
 const USERS = ["Torrens", "Antonio", "Ampuero", "Lucía"];
+
 const BUDGET = 50;
 
 const REQUIRED_POSITIONS = {
@@ -24,11 +25,6 @@ const DEADLINE = new Date(activeGameweek.deadline);
 
 function isLineupLocked() {
   return new Date() > DEADLINE;
-}
-
-function getSavedEntries() {
-  const saved = localStorage.getItem("fantasy_manual_entries");
-  return saved ? JSON.parse(saved) : {};
 }
 
 function getPlayerByName(playerName) {
@@ -57,34 +53,32 @@ function countPositions(playerNames) {
   );
 }
 
-export default function Admin() {
+export default function MyTeam() {
   const [selectedUser, setSelectedUser] = useState("Torrens");
-  const [entries, setEntries] = useState(getSavedEntries);
   const [positionFilter, setPositionFilter] = useState("ALL");
+  const [entry, setEntry] = useState({
+    captain: "",
+    players: [],
+  });
+  const [saving, setSaving] = useState(false);
 
   const lineupLocked = isLineupLocked();
 
-  const currentEntry = entries[selectedUser] || {
-    captain: "",
-    players: [],
-  };
-
-  const currentCost = calculateCost(currentEntry.players);
+  const currentCost = calculateCost(entry.players);
   const remainingBudget = BUDGET - currentCost;
-  const positionCounts = countPositions(currentEntry.players);
+  const positionCounts = countPositions(entry.players);
 
   const filteredPlayers = useMemo(() => {
     if (positionFilter === "ALL") return players;
     return players.filter((p) => p.position === positionFilter);
   }, [positionFilter]);
 
-  function saveEntries(updatedEntries) {
-    setEntries(updatedEntries);
-    localStorage.setItem(
-      "fantasy_manual_entries",
-      JSON.stringify(updatedEntries)
+  const lineupComplete =
+    entry.players.length === 7 &&
+    entry.captain &&
+    Object.entries(REQUIRED_POSITIONS).every(
+      ([position, required]) => positionCounts[position] === required
     );
-  }
 
   function addPlayer(player) {
     if (lineupLocked) {
@@ -92,13 +86,13 @@ export default function Admin() {
       return;
     }
 
-    if (currentEntry.players.includes(player.name)) {
-      alert("Ese jugador ya está en la alineación");
+    if (entry.players.includes(player.name)) {
+      alert("Ese jugador ya está en tu alineación");
       return;
     }
 
-    if (currentEntry.players.length >= 7) {
-      alert("La alineación ya tiene 7 jugadores");
+    if (entry.players.length >= 7) {
+      alert("Tu alineación ya tiene 7 jugadores");
       return;
     }
 
@@ -111,104 +105,82 @@ export default function Admin() {
 
     if (currentCost + player.price > BUDGET) {
       alert(
-        `No tienes presupuesto suficiente. Te quedarían ${remainingBudget.toFixed(
+        `No tienes presupuesto suficiente. Te quedan ${remainingBudget.toFixed(
           1
         )}M y este jugador cuesta ${player.price.toFixed(1)}M.`
       );
       return;
     }
 
-    const updatedEntry = {
-      ...currentEntry,
-      players: [...currentEntry.players, player.name],
-    };
-
-    saveEntries({
-      ...entries,
-      [selectedUser]: updatedEntry,
-    });
+    setEntry((prev) => ({
+      ...prev,
+      players: [...prev.players, player.name],
+    }));
   }
 
   function removePlayer(playerName) {
     if (lineupLocked) return;
 
-    const updatedPlayers = currentEntry.players.filter((p) => p !== playerName);
-
-    const updatedEntry = {
-      ...currentEntry,
-      players: updatedPlayers,
-      captain: currentEntry.captain === playerName ? "" : currentEntry.captain,
-    };
-
-    saveEntries({
-      ...entries,
-      [selectedUser]: updatedEntry,
-    });
+    setEntry((prev) => ({
+      ...prev,
+      players: prev.players.filter((p) => p !== playerName),
+      captain: prev.captain === playerName ? "" : prev.captain,
+    }));
   }
 
   function setCaptain(playerName) {
     if (lineupLocked) return;
 
-    const updatedEntry = {
-      ...currentEntry,
+    setEntry((prev) => ({
+      ...prev,
       captain: playerName,
-    };
-
-    saveEntries({
-      ...entries,
-      [selectedUser]: updatedEntry,
-    });
+    }));
   }
 
   function clearEntry() {
     if (lineupLocked) return;
 
-    saveEntries({
-      ...entries,
-      [selectedUser]: {
-        captain: "",
-        players: [],
-      },
+    setEntry({
+      captain: "",
+      players: [],
     });
   }
 
-async function saveToSupabase() {
-  const entryData = {
-    user_name: selectedUser,
-    players: currentEntry.players,
-    captain: currentEntry.captain,
-  };
+  async function saveToSupabase() {
+    if (!lineupComplete) {
+      alert("La alineación todavía no está completa");
+      return;
+    }
 
-  const { data, error } = await supabase
-    .from("entries")
-    .upsert([entryData], { onConflict: "user_name" })
-    .select();
+    setSaving(true);
 
-  console.log("SUPABASE UPSERT DATA:", data);
-  console.log("SUPABASE UPSERT ERROR:", error);
+    const entryData = {
+      user_name: selectedUser,
+      players: entry.players,
+      captain: entry.captain,
+    };
 
-  if (error) {
-    alert("Error guardando alineación");
-    return;
+    const { error } = await supabase
+      .from("entries")
+      .upsert([entryData], { onConflict: "user_name" });
+
+    setSaving(false);
+
+    if (error) {
+      console.error("Error guardando alineación:", error);
+      alert("Error guardando alineación");
+      return;
+    }
+
+    alert("Alineación guardada correctamente 🚀");
   }
-
-  alert("Alineación guardada/actualizada en Supabase 🚀");
-}
-
-  const lineupComplete =
-    currentEntry.players.length === 7 &&
-    currentEntry.captain &&
-    Object.entries(REQUIRED_POSITIONS).every(
-      ([position, required]) => positionCounts[position] === required
-    );
 
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Admin</h2>
-
+        <h2 className="text-2xl font-bold">Mi equipo</h2>
         <p className="text-sm text-gray-500">
-          Monta alineaciones manuales para la demo.
+          Elige tu alineación para la jornada actual.
         </p>
 
         {lineupLocked ? (
@@ -217,17 +189,21 @@ async function saveToSupabase() {
           </div>
         ) : (
           <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-            🟢 Alineaciones abiertas
+            🟢 Alineaciones abiertas hasta{" "}
+            {DEADLINE.toLocaleString("es-ES")}
           </div>
         )}
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <label className="mb-2 block text-sm font-semibold">Usuario</label>
+        <label className="mb-2 block text-sm font-semibold">
+          Selecciona tu usuario
+        </label>
 
         <select
           value={selectedUser}
           onChange={(e) => setSelectedUser(e.target.value)}
+          disabled={lineupLocked}
           className="w-full rounded-xl border border-gray-200 px-3 py-2"
         >
           {USERS.map((user) => (
@@ -238,43 +214,39 @@ async function saveToSupabase() {
         </select>
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h3 className="mb-3 text-lg font-bold">Presupuesto</h3>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Presupuesto</p>
+          <p className="mt-1 text-2xl font-bold">{BUDGET.toFixed(1)}M</p>
+        </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-gray-200 p-3">
-            <p className="text-xs text-gray-500">Límite</p>
-            <p className="font-bold">{BUDGET.toFixed(1)}M</p>
-          </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Gastado</p>
+          <p className="mt-1 text-2xl font-bold">{currentCost.toFixed(1)}M</p>
+        </div>
 
-          <div className="rounded-xl border border-gray-200 p-3">
-            <p className="text-xs text-gray-500">Gastado</p>
-            <p className="font-bold">{currentCost.toFixed(1)}M</p>
-          </div>
-
-          <div
-            className={`rounded-xl border p-3 ${
-              remainingBudget < 0
-                ? "border-red-200 bg-red-50"
-                : "border-green-200 bg-green-50"
+        <div
+          className={`rounded-2xl border p-4 shadow-sm ${
+            remainingBudget < 0
+              ? "border-red-200 bg-red-50"
+              : "border-green-200 bg-green-50"
+          }`}
+        >
+          <p className="text-sm text-gray-500">Restante</p>
+          <p
+            className={`mt-1 text-2xl font-bold ${
+              remainingBudget < 0 ? "text-red-700" : "text-green-700"
             }`}
           >
-            <p className="text-xs text-gray-500">Restante</p>
-            <p
-              className={`font-bold ${
-                remainingBudget < 0 ? "text-red-700" : "text-green-700"
-              }`}
-            >
-              {remainingBudget.toFixed(1)}M
-            </p>
-          </div>
+            {remainingBudget.toFixed(1)}M
+          </p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h3 className="mb-3 text-lg font-bold">Estructura de alineación</h3>
+        <h3 className="mb-3 text-lg font-bold">Estructura</h3>
 
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Object.entries(REQUIRED_POSITIONS).map(([position, required]) => {
             const current = positionCounts[position];
             const complete = current === required;
@@ -303,7 +275,6 @@ async function saveToSupabase() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {/* Jugadores disponibles */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-lg font-bold">Jugadores disponibles</h3>
@@ -323,12 +294,8 @@ async function saveToSupabase() {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
             {filteredPlayers.map((player) => {
-              const alreadySelected = currentEntry.players.includes(
-                player.name
-              );
-
+              const alreadySelected = entry.players.includes(player.name);
               const canAfford = currentCost + player.price <= BUDGET;
-
               const positionAvailable =
                 positionCounts[player.position] <
                 REQUIRED_POSITIONS[player.position];
@@ -336,7 +303,7 @@ async function saveToSupabase() {
               const disabled =
                 lineupLocked ||
                 alreadySelected ||
-                currentEntry.players.length >= 7 ||
+                entry.players.length >= 7 ||
                 !canAfford ||
                 !positionAvailable;
 
@@ -364,16 +331,14 @@ async function saveToSupabase() {
           </div>
         </div>
 
-        {/* Alineación usuario */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-bold">
                 Alineación de {selectedUser}
               </h3>
-
               <p className="text-sm text-gray-500">
-                {currentEntry.players.length}/7 jugadores
+                {entry.players.length}/7 jugadores
               </p>
             </div>
 
@@ -390,13 +355,13 @@ async function saveToSupabase() {
             </button>
           </div>
 
-          {currentEntry.players.length === 0 ? (
+          {entry.players.length === 0 ? (
             <p className="rounded-xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
-              Aún no hay jugadores seleccionados.
+              Aún no has añadido jugadores.
             </p>
           ) : (
             <ul className="space-y-2">
-              {currentEntry.players.map((playerName, index) => {
+              {entry.players.map((playerName, index) => {
                 const player = getPlayerByName(playerName);
 
                 return (
@@ -407,8 +372,7 @@ async function saveToSupabase() {
                     <div>
                       <p className="font-semibold">
                         {index + 1}. {playerName}
-
-                        {currentEntry.captain === playerName && (
+                        {entry.captain === playerName && (
                           <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-800">
                             C
                           </span>
@@ -428,7 +392,7 @@ async function saveToSupabase() {
                         className={`flex-1 rounded-xl border px-3 py-2 text-sm transition sm:flex-none ${
                           lineupLocked
                             ? "cursor-not-allowed border-gray-200 text-gray-300"
-                            : currentEntry.captain === playerName
+                            : entry.captain === playerName
                             ? "border-yellow-400 bg-yellow-100 text-yellow-800"
                             : "border-black hover:bg-black hover:text-yellow-400"
                         }`}
@@ -454,7 +418,7 @@ async function saveToSupabase() {
             </ul>
           )}
 
-          {currentEntry.players.length === 7 && !currentEntry.captain && (
+          {entry.players.length === 7 && !entry.captain && (
             <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Falta elegir capitán.
             </p>
@@ -462,13 +426,14 @@ async function saveToSupabase() {
 
           {lineupComplete && (
             <button
-            onClick={saveToSupabase}
-            className="mt-4 w-full rounded-xl border border-black bg-black px-4 py-3 font-semibold text-yellow-400 transition hover:opacity-90"
-           >
-             Guardar alineación en Supabase
-             </button>
+              disabled={saving}
+              onClick={saveToSupabase}
+              className="mt-4 w-full rounded-xl border border-black bg-black px-4 py-3 font-semibold text-yellow-400 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar mi alineación"}
+            </button>
           )}
-          
+
           {lineupComplete && (
             <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
               Alineación completa y válida.

@@ -26,4 +26,4 @@ export const playerScores = {
   "Juan Artola": 0,
   "Josué Chibozo": 0,
   "Pere Marco": 0,
-};
+}
