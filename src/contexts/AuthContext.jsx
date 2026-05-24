@@ -10,11 +10,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId) {
+    console.log("LOADING PROFILE:", userId);
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
+      console.log("PROFILE DATA:", data);
+console.log("PROFILE ERROR:", error);
 
     if (error) {
       console.error("Error cargando perfil:", error);
@@ -32,6 +35,8 @@ export function AuthProvider({ children }) {
     async function initAuth() {
       try {
         const { data, error } = await supabase.auth.getSession();
+        console.log("SESSION DATA:", data);
+console.log("SESSION ERROR:", error);
 
         if (error) {
           console.error("Error getSession:", error);

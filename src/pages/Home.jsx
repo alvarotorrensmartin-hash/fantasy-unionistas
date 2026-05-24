@@ -1,4 +1,6 @@
 export default function Home() {
+  const test = "FUNCIONA";
+console.log(test);
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
