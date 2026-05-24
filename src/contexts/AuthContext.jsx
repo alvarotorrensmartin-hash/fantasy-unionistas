@@ -14,47 +14,75 @@ export function AuthProvider({ children }) {
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error cargando perfil:", error);
       setProfile(null);
-      return;
+      return null;
     }
 
-    setProfile(data);
+    setProfile(data || null);
+    return data || null;
   }
 
   useEffect(() => {
+    let mounted = true;
+
     async function initAuth() {
-      const { data } = await supabase.auth.getSession();
+      try {
+        const { data, error } = await supabase.auth.getSession();
 
-      setSession(data.session);
-      setUser(data.session?.user || null);
+        if (error) {
+          console.error("Error getSession:", error);
+        }
 
-      if (data.session?.user) {
-        await loadProfile(data.session.user.id);
+        if (!mounted) return;
+
+        const currentSession = data?.session || null;
+        const currentUser = currentSession?.user || null;
+
+        setSession(currentSession);
+        setUser(currentUser);
+
+        if (currentUser) {
+          await loadProfile(currentUser.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (err) {
+        console.error("Error inicializando auth:", err);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     }
 
     initAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user || null);
+        const currentUser = newSession?.user || null;
 
-        if (newSession?.user) {
-          await loadProfile(newSession.user.id);
+        setSession(newSession);
+        setUser(currentUser);
+
+        if (currentUser) {
+          await loadProfile(currentUser.id);
         } else {
           setProfile(null);
         }
+
+        setLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
@@ -64,6 +92,7 @@ export function AuthProvider({ children }) {
     setSession(null);
     setUser(null);
     setProfile(null);
+    setLoading(false);
   }
 
   return (

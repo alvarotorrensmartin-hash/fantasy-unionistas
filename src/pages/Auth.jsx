@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient.js";
 
 export default function Auth() {
+  const navigate = useNavigate();
+
   const [mode, setMode] = useState("login");
 
   const [email, setEmail] = useState("");
@@ -15,44 +18,56 @@ export default function Auth() {
 
     setLoading(true);
 
-    if (mode === "register") {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    try {
+      if (mode === "register") {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
 
-      if (error) {
-        alert(error.message);
-        setLoading(false);
-        return;
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        if (data.user) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .upsert(
+              [
+                {
+                  id: data.user.id,
+                  display_name: displayName,
+                },
+              ],
+              { onConflict: "id" }
+            );
+
+          if (profileError) {
+            console.error("Error creando perfil:", profileError);
+            alert("Cuenta creada, pero hubo un problema creando el perfil");
+            return;
+          }
+        }
+
+        alert("Cuenta creada correctamente 🚀");
+        navigate("/mi-equipo");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        navigate("/mi-equipo");
       }
-
-      if (data.user) {
-        await supabase.from("profiles").insert([
-          {
-            id: data.user.id,
-            display_name: displayName,
-          },
-        ]);
-      }
-
-      alert("Cuenta creada correctamente 🚀");
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        alert(error.message);
-        setLoading(false);
-        return;
-      }
-
-      alert("Sesión iniciada 🚀");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -62,14 +77,9 @@ export default function Auth() {
           {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
         </h2>
 
-        <p className="mt-2 text-sm text-gray-500">
-          Fantasy Unionistas
-        </p>
+        <p className="mt-2 text-sm text-gray-500">Fantasy Unionistas</p>
 
-        <form
-          onSubmit={handleSubmit}
-          className="mt-5 space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {mode === "register" && (
             <div>
               <label className="mb-1 block text-sm font-semibold">
@@ -87,9 +97,7 @@ export default function Auth() {
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-semibold">
-              Email
-            </label>
+            <label className="mb-1 block text-sm font-semibold">Email</label>
 
             <input
               type="email"
@@ -128,14 +136,10 @@ export default function Auth() {
         </form>
 
         <button
-          onClick={() =>
-            setMode(mode === "login" ? "register" : "login")
-          }
+          onClick={() => setMode(mode === "login" ? "register" : "login")}
           className="mt-4 text-sm text-gray-500 underline"
         >
-          {mode === "login"
-            ? "No tengo cuenta"
-            : "Ya tengo cuenta"}
+          {mode === "login" ? "No tengo cuenta" : "Ya tengo cuenta"}
         </button>
       </div>
     </section>
