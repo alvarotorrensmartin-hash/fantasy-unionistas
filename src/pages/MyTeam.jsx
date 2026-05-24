@@ -200,7 +200,7 @@ export default function MyTeam() {
 
     const { error } = await supabase
       .from("entries")
-      .upsert([entryData], { onConflict: "user_name" });
+      .upsert([entryData], { onConflict: "user_id" });
 
     setSaving(false);
 
