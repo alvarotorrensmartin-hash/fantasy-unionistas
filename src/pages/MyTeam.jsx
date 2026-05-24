@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { players } from "../data/players.js";
 import { competitions } from "../data/competitions.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { useAuth } from "../contexts/AuthContext.jsx";
 import PlayerCard from "../components/PlayerCard.jsx";
-
-const USERS = ["Torrens", "Antonio", "Ampuero", "Lucía"];
 
 const BUDGET = 50;
 
@@ -16,11 +16,9 @@ const REQUIRED_POSITIONS = {
 };
 
 const competition = competitions[0];
-
 const activeGameweek = competition.gameweeks.find(
   (g) => g.id === competition.activeGameweekId
 );
-
 const DEADLINE = new Date(activeGameweek.deadline);
 
 function isLineupLocked() {
@@ -54,15 +52,67 @@ function countPositions(playerNames) {
 }
 
 export default function MyTeam() {
-  const [selectedUser, setSelectedUser] = useState("Torrens");
+  const { user, profile, loading } = useAuth();
+
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [entry, setEntry] = useState({
     captain: "",
     players: [],
   });
   const [saving, setSaving] = useState(false);
+  const [loadingEntry, setLoadingEntry] = useState(true);
 
   const lineupLocked = isLineupLocked();
+
+  useEffect(() => {
+    async function loadMyEntry() {
+      if (!profile?.display_name) return;
+
+      const { data, error } = await supabase
+        .from("entries")
+        .select("*")
+        .eq("user_name", profile.display_name)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error cargando mi alineación:", error);
+      }
+
+      if (data) {
+        setEntry({
+          captain: data.captain || "",
+          players: data.players || [],
+        });
+      }
+
+      setLoadingEntry(false);
+    }
+
+    if (profile?.display_name) {
+      loadMyEntry();
+    }
+  }, [profile]);
+
+  if (loading) {
+    return <p className="text-sm text-gray-500">Cargando sesión...</p>;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!profile) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold">Mi equipo</h2>
+        <p className="text-sm text-gray-500">
+          Cargando perfil de usuario...
+        </p>
+      </section>
+    );
+  }
+
+  const selectedUser = profile.display_name;
 
   const currentCost = calculateCost(entry.players);
   const remainingBudget = BUDGET - currentCost;
@@ -81,35 +131,22 @@ export default function MyTeam() {
     );
 
   function addPlayer(player) {
-    if (lineupLocked) {
-      alert("Las alineaciones están cerradas");
-      return;
-    }
-
-    if (entry.players.includes(player.name)) {
-      alert("Ese jugador ya está en tu alineación");
-      return;
-    }
-
-    if (entry.players.length >= 7) {
-      alert("Tu alineación ya tiene 7 jugadores");
-      return;
-    }
+    if (lineupLocked) return alert("Las alineaciones están cerradas");
+    if (entry.players.includes(player.name)) return alert("Ese jugador ya está en tu alineación");
+    if (entry.players.length >= 7) return alert("Tu alineación ya tiene 7 jugadores");
 
     if (positionCounts[player.position] >= REQUIRED_POSITIONS[player.position]) {
-      alert(
+      return alert(
         `Ya has cubierto el máximo de ${player.position}: ${REQUIRED_POSITIONS[player.position]}`
       );
-      return;
     }
 
     if (currentCost + player.price > BUDGET) {
-      alert(
+      return alert(
         `No tienes presupuesto suficiente. Te quedan ${remainingBudget.toFixed(
           1
         )}M y este jugador cuesta ${player.price.toFixed(1)}M.`
       );
-      return;
     }
 
     setEntry((prev) => ({
@@ -156,6 +193,7 @@ export default function MyTeam() {
 
     const entryData = {
       user_name: selectedUser,
+      user_id: user.id,
       players: entry.players,
       captain: entry.captain,
     };
@@ -175,43 +213,22 @@ export default function MyTeam() {
     alert("Alineación guardada correctamente 🚀");
   }
 
+  if (loadingEntry) {
+    return (
+      <section>
+        <h2 className="text-2xl font-bold">Mi equipo</h2>
+        <p className="text-sm text-gray-500">Cargando tu alineación...</p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Mi equipo</h2>
         <p className="text-sm text-gray-500">
-          Elige tu alineación para la jornada actual.
+          Estás haciendo la alineación como <strong>{selectedUser}</strong>.
         </p>
-
-        {lineupLocked ? (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-            🔒 Alineaciones cerradas
-          </div>
-        ) : (
-          <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
-            🟢 Alineaciones abiertas hasta{" "}
-            {DEADLINE.toLocaleString("es-ES")}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <label className="mb-2 block text-sm font-semibold">
-          Selecciona tu usuario
-        </label>
-
-        <select
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          disabled={lineupLocked}
-          className="w-full rounded-xl border border-gray-200 px-3 py-2"
-        >
-          {USERS.map((user) => (
-            <option key={user} value={user}>
-              {user}
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -225,19 +242,9 @@ export default function MyTeam() {
           <p className="mt-1 text-2xl font-bold">{currentCost.toFixed(1)}M</p>
         </div>
 
-        <div
-          className={`rounded-2xl border p-4 shadow-sm ${
-            remainingBudget < 0
-              ? "border-red-200 bg-red-50"
-              : "border-green-200 bg-green-50"
-          }`}
-        >
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
           <p className="text-sm text-gray-500">Restante</p>
-          <p
-            className={`mt-1 text-2xl font-bold ${
-              remainingBudget < 0 ? "text-red-700" : "text-green-700"
-            }`}
-          >
+          <p className="mt-1 text-2xl font-bold text-green-700">
             {remainingBudget.toFixed(1)}M
           </p>
         </div>
@@ -255,17 +262,11 @@ export default function MyTeam() {
               <div
                 key={position}
                 className={`rounded-xl border p-3 ${
-                  complete
-                    ? "border-green-200 bg-green-50"
-                    : "border-amber-200 bg-amber-50"
+                  complete ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"
                 }`}
               >
                 <p className="text-xs text-gray-500">{position}</p>
-                <p
-                  className={`font-bold ${
-                    complete ? "text-green-700" : "text-amber-800"
-                  }`}
-                >
+                <p className={`font-bold ${complete ? "text-green-700" : "text-amber-800"}`}>
                   {current}/{required}
                 </p>
               </div>
@@ -297,8 +298,7 @@ export default function MyTeam() {
               const alreadySelected = entry.players.includes(player.name);
               const canAfford = currentCost + player.price <= BUDGET;
               const positionAvailable =
-                positionCounts[player.position] <
-                REQUIRED_POSITIONS[player.position];
+                positionCounts[player.position] < REQUIRED_POSITIONS[player.position];
 
               const disabled =
                 lineupLocked ||
@@ -334,22 +334,14 @@ export default function MyTeam() {
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold">
-                Alineación de {selectedUser}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {entry.players.length}/7 jugadores
-              </p>
+              <h3 className="text-lg font-bold">Alineación de {selectedUser}</h3>
+              <p className="text-sm text-gray-500">{entry.players.length}/7 jugadores</p>
             </div>
 
             <button
               disabled={lineupLocked}
               onClick={clearEntry}
-              className={`rounded-xl border px-3 py-2 text-sm transition ${
-                lineupLocked
-                  ? "cursor-not-allowed border-gray-200 text-gray-300"
-                  : "border-red-300 text-red-700 hover:bg-red-50"
-              }`}
+              className="rounded-xl border border-red-300 px-3 py-2 text-sm text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"
             >
               Limpiar
             </button>
@@ -380,8 +372,7 @@ export default function MyTeam() {
                       </p>
 
                       <p className="text-xs text-gray-500">
-                        {player?.position || "-"} ·{" "}
-                        {(player?.price || 0).toFixed(1)}M
+                        {player?.position || "-"} · {(player?.price || 0).toFixed(1)}M
                       </p>
                     </div>
 
@@ -390,12 +381,10 @@ export default function MyTeam() {
                         disabled={lineupLocked}
                         onClick={() => setCaptain(playerName)}
                         className={`flex-1 rounded-xl border px-3 py-2 text-sm transition sm:flex-none ${
-                          lineupLocked
-                            ? "cursor-not-allowed border-gray-200 text-gray-300"
-                            : entry.captain === playerName
+                          entry.captain === playerName
                             ? "border-yellow-400 bg-yellow-100 text-yellow-800"
                             : "border-black hover:bg-black hover:text-yellow-400"
-                        }`}
+                        } disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300`}
                       >
                         Capitán
                       </button>
@@ -403,11 +392,7 @@ export default function MyTeam() {
                       <button
                         disabled={lineupLocked}
                         onClick={() => removePlayer(playerName)}
-                        className={`flex-1 rounded-xl border px-3 py-2 text-sm transition sm:flex-none ${
-                          lineupLocked
-                            ? "cursor-not-allowed border-gray-200 text-gray-300"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
+                        className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300 sm:flex-none"
                       >
                         Quitar
                       </button>
@@ -432,12 +417,6 @@ export default function MyTeam() {
             >
               {saving ? "Guardando..." : "Guardar mi alineación"}
             </button>
-          )}
-
-          {lineupComplete && (
-            <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
-              Alineación completa y válida.
-            </p>
           )}
         </div>
       </div>

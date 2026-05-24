@@ -9,7 +9,7 @@ export const competitions = [
       {
         id: "jornada-38",
         name: "Jornada 38",
-        deadline: "2026-05-23T14:00:00",
+        deadline: "2026-05-30T14:00:00",
         status: "open",
       },
     ],
