@@ -9,24 +9,34 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(userId) {
+  async function loadProfile(userId, userEmail) {
     console.log("LOADING PROFILE:", userId);
+
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
-      console.log("PROFILE DATA:", data);
-console.log("PROFILE ERROR:", error);
+
+    console.log("PROFILE DATA:", data);
+    console.log("PROFILE ERROR:", error);
+
+    if (data) {
+      setProfile(data);
+      return data;
+    }
 
     if (error) {
       console.error("Error cargando perfil:", error);
-      setProfile(null);
-      return null;
     }
 
-    setProfile(data || null);
-    return data || null;
+    const fallbackProfile = {
+      id: userId,
+      display_name: userEmail?.split("@")[0] || "Usuario",
+    };
+
+    setProfile(fallbackProfile);
+    return fallbackProfile;
   }
 
   useEffect(() => {
@@ -35,8 +45,9 @@ console.log("PROFILE ERROR:", error);
     async function initAuth() {
       try {
         const { data, error } = await supabase.auth.getSession();
+
         console.log("SESSION DATA:", data);
-console.log("SESSION ERROR:", error);
+        console.log("SESSION ERROR:", error);
 
         if (error) {
           console.error("Error getSession:", error);
@@ -51,7 +62,7 @@ console.log("SESSION ERROR:", error);
         setUser(currentUser);
 
         if (currentUser) {
-          await loadProfile(currentUser.id);
+          await loadProfile(currentUser.id, currentUser.email);
         } else {
           setProfile(null);
         }
@@ -77,7 +88,7 @@ console.log("SESSION ERROR:", error);
         setUser(currentUser);
 
         if (currentUser) {
-          await loadProfile(currentUser.id);
+          await loadProfile(currentUser.id, currentUser.email);
         } else {
           setProfile(null);
         }
