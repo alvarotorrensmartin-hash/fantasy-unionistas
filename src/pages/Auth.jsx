@@ -21,34 +21,20 @@ export default function Auth() {
     try {
       if (mode === "register") {
         const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+  email,
+  password,
+  options: {
+    data: {
+      display_name: displayName,
+    },
+  },
+});
 
         if (error) {
           alert(error.message);
           return;
         }
 
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .upsert(
-              [
-                {
-                  id: data.user.id,
-                  display_name: displayName,
-                },
-              ],
-              { onConflict: "id" }
-            );
-
-          if (profileError) {
-            console.error("Error creando perfil:", profileError);
-            alert("Cuenta creada, pero hubo un problema creando el perfil");
-            return;
-          }
-        }
 
         alert("Cuenta creada correctamente 🚀");
         navigate("/mi-equipo");
