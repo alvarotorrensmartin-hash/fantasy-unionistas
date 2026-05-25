@@ -71,7 +71,7 @@ export default function MyTeam() {
       const { data, error } = await supabase
         .from("entries")
         .select("*")
-        .eq("user_name", profile.display_name)
+        .eq("user_id", user.id)
         .single();
 
       if (error && error.code !== "PGRST116") {
