@@ -3,6 +3,7 @@ import { players } from "../data/players.js";
 import { competitions } from "../data/competitions.js";
 import PlayerCard from "../components/PlayerCard.jsx";
 import { supabase } from "../lib/supabaseClient.js";
+import { playerScores } from "../data/playerScores.js";
 
 const USERS = ["Torrens", "Antonio", "Ampuero", "Lucía"];
 const BUDGET = 50;
@@ -57,6 +58,17 @@ function countPositions(playerNames) {
   );
 }
 
+function calculateEntryPoints(entry) {
+  let total = 0;
+
+  entry.players.forEach((playerName) => {
+    const basePoints = playerScores[playerName] ?? 0;
+    total += playerName === entry.captain ? basePoints * 2 : basePoints;
+  });
+
+  return total;
+}
+
 export default function Admin() {
   const [selectedUser, setSelectedUser] = useState("Torrens");
   const [entries, setEntries] = useState(getSavedEntries);
@@ -87,45 +99,36 @@ export default function Admin() {
   }
 
   function addPlayer(player) {
-    if (lineupLocked) {
-      alert("Las alineaciones están cerradas");
-      return;
-    }
+    if (lineupLocked) return alert("Las alineaciones están cerradas");
 
     if (currentEntry.players.includes(player.name)) {
-      alert("Ese jugador ya está en la alineación");
-      return;
+      return alert("Ese jugador ya está en la alineación");
     }
 
     if (currentEntry.players.length >= 7) {
-      alert("La alineación ya tiene 7 jugadores");
-      return;
+      return alert("La alineación ya tiene 7 jugadores");
     }
 
     if (positionCounts[player.position] >= REQUIRED_POSITIONS[player.position]) {
-      alert(
+      return alert(
         `Ya has cubierto el máximo de ${player.position}: ${REQUIRED_POSITIONS[player.position]}`
       );
-      return;
     }
 
     if (currentCost + player.price > BUDGET) {
-      alert(
+      return alert(
         `No tienes presupuesto suficiente. Te quedarían ${remainingBudget.toFixed(
           1
         )}M y este jugador cuesta ${player.price.toFixed(1)}M.`
       );
-      return;
     }
-
-    const updatedEntry = {
-      ...currentEntry,
-      players: [...currentEntry.players, player.name],
-    };
 
     saveEntries({
       ...entries,
-      [selectedUser]: updatedEntry,
+      [selectedUser]: {
+        ...currentEntry,
+        players: [...currentEntry.players, player.name],
+      },
     });
   }
 
@@ -134,29 +137,25 @@ export default function Admin() {
 
     const updatedPlayers = currentEntry.players.filter((p) => p !== playerName);
 
-    const updatedEntry = {
-      ...currentEntry,
-      players: updatedPlayers,
-      captain: currentEntry.captain === playerName ? "" : currentEntry.captain,
-    };
-
     saveEntries({
       ...entries,
-      [selectedUser]: updatedEntry,
+      [selectedUser]: {
+        ...currentEntry,
+        players: updatedPlayers,
+        captain: currentEntry.captain === playerName ? "" : currentEntry.captain,
+      },
     });
   }
 
   function setCaptain(playerName) {
     if (lineupLocked) return;
 
-    const updatedEntry = {
-      ...currentEntry,
-      captain: playerName,
-    };
-
     saveEntries({
       ...entries,
-      [selectedUser]: updatedEntry,
+      [selectedUser]: {
+        ...currentEntry,
+        captain: playerName,
+      },
     });
   }
 
@@ -172,28 +171,48 @@ export default function Admin() {
     });
   }
 
-async function saveToSupabase() {
-  const entryData = {
-    user_name: selectedUser,
-    players: currentEntry.players,
-    captain: currentEntry.captain,
-  };
+  async function saveToSupabase() {
+    const entryData = {
+      user_name: selectedUser,
+      players: currentEntry.players,
+      captain: currentEntry.captain,
+    };
 
-  const { data, error } = await supabase
-    .from("entries")
-    .upsert([entryData], { onConflict: "user_name" })
-    .select();
+    const { error } = await supabase
+      .from("entries")
+      .upsert([entryData], { onConflict: "user_name" });
 
-  console.log("SUPABASE UPSERT DATA:", data);
-  console.log("SUPABASE UPSERT ERROR:", error);
+    if (error) {
+      console.error("Error guardando alineación:", error);
+      alert("Error guardando alineación");
+      return;
+    }
 
-  if (error) {
-    alert("Error guardando alineación");
-    return;
+    alert("Alineación guardada/actualizada en Supabase 🚀");
   }
 
-  alert("Alineación guardada/actualizada en Supabase 🚀");
-}
+  async function saveResultToSupabase() {
+    const points = calculateEntryPoints(currentEntry);
+
+    const resultData = {
+      user_id: null,
+      user_name: selectedUser,
+      gameweek_id: activeGameweek.id,
+      points,
+    };
+
+    const { error } = await supabase
+      .from("results")
+      .upsert([resultData], { onConflict: "user_name,gameweek_id" });
+
+    if (error) {
+      console.error("Error guardando resultado:", error);
+      alert("Error guardando resultado");
+      return;
+    }
+
+    alert(`Resultado guardado: ${selectedUser} suma ${points} puntos`);
+  }
 
   const lineupComplete =
     currentEntry.players.length === 7 &&
@@ -303,7 +322,6 @@ async function saveToSupabase() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        {/* Jugadores disponibles */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-lg font-bold">Jugadores disponibles</h3>
@@ -323,12 +341,8 @@ async function saveToSupabase() {
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
             {filteredPlayers.map((player) => {
-              const alreadySelected = currentEntry.players.includes(
-                player.name
-              );
-
+              const alreadySelected = currentEntry.players.includes(player.name);
               const canAfford = currentCost + player.price <= BUDGET;
-
               const positionAvailable =
                 positionCounts[player.position] <
                 REQUIRED_POSITIONS[player.position];
@@ -364,7 +378,6 @@ async function saveToSupabase() {
           </div>
         </div>
 
-        {/* Alineación usuario */}
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -461,18 +474,25 @@ async function saveToSupabase() {
           )}
 
           {lineupComplete && (
-            <button
-            onClick={saveToSupabase}
-            className="mt-4 w-full rounded-xl border border-black bg-black px-4 py-3 font-semibold text-yellow-400 transition hover:opacity-90"
-           >
-             Guardar alineación en Supabase
-             </button>
-          )}
-          
-          {lineupComplete && (
-            <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
-              Alineación completa y válida.
-            </p>
+            <>
+              <button
+                onClick={saveToSupabase}
+                className="mt-4 w-full rounded-xl border border-black bg-black px-4 py-3 font-semibold text-yellow-400 transition hover:opacity-90"
+              >
+                Guardar alineación en Supabase
+              </button>
+
+              <button
+                onClick={saveResultToSupabase}
+                className="mt-3 w-full rounded-xl border border-green-700 bg-green-700 px-4 py-3 font-semibold text-white transition hover:opacity-90"
+              >
+                Guardar resultado de la jornada
+              </button>
+
+              <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
+                Alineación completa y válida.
+              </p>
+            </>
           )}
         </div>
       </div>
