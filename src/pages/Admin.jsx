@@ -214,6 +214,37 @@ export default function Admin() {
     alert(`Resultado guardado: ${selectedUser} suma ${points} puntos`);
   }
 
+  async function saveAllResultsToSupabase() {
+  const { data: allEntries, error: entriesError } = await supabase
+    .from("entries")
+    .select("*");
+
+  if (entriesError) {
+    console.error("Error cargando alineaciones:", entriesError);
+    alert("Error cargando alineaciones");
+    return;
+  }
+
+  const resultRows = allEntries.map((entry) => ({
+    user_id: entry.user_id || null,
+    user_name: entry.user_name,
+    gameweek_id: activeGameweek.id,
+    points: calculateEntryPoints(entry),
+  }));
+
+  const { error } = await supabase
+    .from("results")
+    .upsert(resultRows, { onConflict: "user_name,gameweek_id" });
+
+  if (error) {
+    console.error("Error guardando resultados:", error);
+    alert("Error guardando resultados");
+    return;
+  }
+
+  alert(`Resultados guardados para ${resultRows.length} usuarios`);
+}
+
   const lineupComplete =
     currentEntry.players.length === 7 &&
     currentEntry.captain &&
@@ -488,6 +519,13 @@ export default function Admin() {
               >
                 Guardar resultado de la jornada
               </button>
+
+              <button
+  onClick={saveAllResultsToSupabase}
+  className="mt-3 w-full rounded-xl border border-blue-700 bg-blue-700 px-4 py-3 font-semibold text-white transition hover:opacity-90"
+>
+  Guardar resultados de todos
+</button>
 
               <p className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
                 Alineación completa y válida.
