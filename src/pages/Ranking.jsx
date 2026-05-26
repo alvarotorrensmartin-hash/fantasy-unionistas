@@ -1,64 +1,60 @@
 import { useEffect, useState } from "react";
-import { playerScores } from "../data/playerScores.js";
 import { supabase } from "../lib/supabaseClient.js";
 
-function calculateEntryPoints(entry) {
-  let total = 0;
-
-  entry.players.forEach((playerName) => {
-    if (playerName === "Pendiente") return;
-
-    const basePoints = playerScores[playerName] ?? 0;
-
-    if (playerName === entry.captain) {
-      total += basePoints * 2;
-    } else {
-      total += basePoints;
-    }
-  });
-
-  return total;
-}
-
 export default function Ranking() {
-  const [entries, setEntries] = useState([]);
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadEntries() {
+    async function loadResults() {
       const { data, error } = await supabase
-        .from("entries")
+        .from("results")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("Error cargando entries:", error);
+        console.error("Error cargando resultados:", error);
         setLoading(false);
         return;
       }
 
-      setEntries(data || []);
+      setResults(data || []);
       setLoading(false);
     }
 
-    loadEntries();
+    loadResults();
   }, []);
 
-  const ranking = entries
-    .map((entry) => ({
-      id: entry.id,
-      name: entry.user_name,
-      points: calculateEntryPoints(entry),
-      captain: entry.captain,
-      players: entry.players || [],
-    }))
-    .sort((a, b) => b.points - a.points);
+  const groupedUsers = {};
+
+  results.forEach((result) => {
+    if (!groupedUsers[result.user_name]) {
+      groupedUsers[result.user_name] = {
+        name: result.user_name,
+        totalPoints: 0,
+        gameweeks: [],
+      };
+    }
+
+    groupedUsers[result.user_name].totalPoints += result.points;
+
+    groupedUsers[result.user_name].gameweeks.push({
+      gameweek: result.gameweek_id,
+      points: result.points,
+    });
+  });
+
+  const ranking = Object.values(groupedUsers).sort(
+    (a, b) => b.totalPoints - a.totalPoints
+  );
 
   if (loading) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">Ranking</h2>
-        <p className="text-sm text-gray-500">Cargando ranking...</p>
+        <p className="text-sm text-gray-500">
+          Cargando clasificación...
+        </p>
       </section>
     );
   }
@@ -66,16 +62,16 @@ export default function Ranking() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Ranking</h2>
+        <h2 className="text-2xl font-bold">Ranking General</h2>
 
         <p className="text-sm text-gray-500">
-          Clasificación calculada automáticamente desde Supabase.
+          Clasificación acumulada de todas las jornadas.
         </p>
       </div>
 
       {ranking.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Todavía no hay alineaciones guardadas en Supabase.
+          Todavía no hay resultados guardados.
         </div>
       ) : (
         <>
@@ -85,14 +81,13 @@ export default function Ranking() {
                 <tr>
                   <th className="px-3 py-2 text-left">Pos.</th>
                   <th className="px-3 py-2 text-left">Jugador</th>
-                  <th className="px-3 py-2 text-left">Capitán</th>
-                  <th className="px-3 py-2 text-left">Puntos</th>
+                  <th className="px-3 py-2 text-left">Puntos Totales</th>
                 </tr>
               </thead>
 
               <tbody>
                 {ranking.map((user, index) => (
-                  <tr key={user.id} className="border-t">
+                  <tr key={user.name} className="border-t">
                     <td className="px-3 py-2 font-semibold">
                       {index === 0
                         ? "🥇"
@@ -105,9 +100,9 @@ export default function Ranking() {
 
                     <td className="px-3 py-2">{user.name}</td>
 
-                    <td className="px-3 py-2">{user.captain}</td>
-
-                    <td className="px-3 py-2 font-bold">{user.points}</td>
+                    <td className="px-3 py-2 font-bold">
+                      {user.totalPoints}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -115,50 +110,37 @@ export default function Ranking() {
           </div>
 
           <div>
-            <h3 className="text-xl font-bold mb-3">
-              Alineaciones registradas
+            <h3 className="mb-3 text-xl font-bold">
+              Historial de jornadas
             </h3>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {ranking.map((entry) => (
+              {ranking.map((user) => (
                 <div
-                  key={entry.id}
+                  key={user.name}
                   className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
                 >
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h4 className="text-lg font-bold">{entry.name}</h4>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h4 className="text-lg font-bold">{user.name}</h4>
 
                     <span className="rounded-xl bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800">
-                      Capitán: {entry.captain}
+                      {user.totalPoints} pts
                     </span>
                   </div>
 
-                  <ul className="space-y-1 text-sm">
-                    {entry.players.map((player, index) => {
-                      const basePoints = playerScores[player] ?? 0;
-                      const isCaptain = player === entry.captain;
-                      const finalPoints = isCaptain
-                        ? basePoints * 2
-                        : basePoints;
+                  <ul className="space-y-2">
+                    {user.gameweeks.map((gw, index) => (
+                      <li
+                        key={index}
+                        className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2 text-sm"
+                      >
+                        <span>{gw.gameweek}</span>
 
-                      return (
-                        <li
-                          key={index}
-                          className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2"
-                        >
-                          <span>
-                            {index + 1}. {player}
-                            {isCaptain && (
-                              <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
-                                C
-                              </span>
-                            )}
-                          </span>
-
-                          <span className="font-bold">{finalPoints} pts</span>
-                        </li>
-                      );
-                    })}
+                        <span className="font-bold">
+                          {gw.points} pts
+                        </span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ))}
