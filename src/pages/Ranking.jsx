@@ -1,8 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient.js";
+
+function getPositionLabel(index) {
+  if (index === 0) return "🥇";
+  if (index === 1) return "🥈";
+  if (index === 2) return "🥉";
+  return index + 1;
+}
 
 export default function Ranking() {
   const [results, setResults] = useState([]);
+  const [selectedGameweek, setSelectedGameweek] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,36 +33,69 @@ export default function Ranking() {
     loadResults();
   }, []);
 
-  const groupedUsers = {};
+  const gameweeks = useMemo(() => {
+    return [...new Set(results.map((result) => result.gameweek_id))];
+  }, [results]);
 
-  results.forEach((result) => {
-    if (!groupedUsers[result.user_name]) {
-      groupedUsers[result.user_name] = {
-        name: result.user_name,
-        totalPoints: 0,
-        gameweeks: [],
-      };
-    }
+  const latestGameweek = gameweeks[gameweeks.length - 1] || "";
 
-    groupedUsers[result.user_name].totalPoints += result.points;
+  const activeSelectedGameweek = selectedGameweek || latestGameweek;
 
-    groupedUsers[result.user_name].gameweeks.push({
-      gameweek: result.gameweek_id,
-      points: result.points,
+  const generalRanking = useMemo(() => {
+    const grouped = {};
+
+    results.forEach((result) => {
+      if (!grouped[result.user_name]) {
+        grouped[result.user_name] = {
+          name: result.user_name,
+          totalPoints: 0,
+        };
+      }
+
+      grouped[result.user_name].totalPoints += Number(result.points);
     });
-  });
 
-  const ranking = Object.values(groupedUsers).sort(
-    (a, b) => b.totalPoints - a.totalPoints
-  );
+    return Object.values(grouped).sort(
+      (a, b) => b.totalPoints - a.totalPoints
+    );
+  }, [results]);
+
+  const latestGameweekRanking = useMemo(() => {
+    return results
+      .filter((result) => result.gameweek_id === latestGameweek)
+      .map((result) => ({
+        name: result.user_name,
+        points: Number(result.points),
+      }))
+      .sort((a, b) => b.points - a.points);
+  }, [results, latestGameweek]);
+
+  const selectedGameweekRanking = useMemo(() => {
+    return results
+      .filter((result) => result.gameweek_id === activeSelectedGameweek)
+      .map((result) => ({
+        name: result.user_name,
+        points: Number(result.points),
+      }))
+      .sort((a, b) => b.points - a.points);
+  }, [results, activeSelectedGameweek]);
 
   if (loading) {
     return (
       <section className="space-y-4">
         <h2 className="text-2xl font-bold">Ranking</h2>
-        <p className="text-sm text-gray-500">
-          Cargando clasificación...
-        </p>
+        <p className="text-sm text-gray-500">Cargando clasificación...</p>
+      </section>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <section className="space-y-4">
+        <h2 className="text-2xl font-bold">Ranking</h2>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Todavía no hay resultados guardados.
+        </div>
       </section>
     );
   }
@@ -62,92 +103,129 @@ export default function Ranking() {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Ranking General</h2>
-
+        <h2 className="text-2xl font-bold">Ranking</h2>
         <p className="text-sm text-gray-500">
-          Clasificación acumulada de todas las jornadas.
+          Clasificación general, última jornada e histórico.
         </p>
       </div>
 
-      {ranking.length === 0 ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Todavía no hay resultados guardados.
-        </div>
-      ) : (
-        <>
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left">Pos.</th>
-                  <th className="px-3 py-2 text-left">Jugador</th>
-                  <th className="px-3 py-2 text-left">Puntos Totales</th>
+      {/* GENERAL */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <h3 className="mb-3 text-xl font-bold">Clasificación general</h3>
+
+        <div className="overflow-x-auto rounded-2xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-left">Pos.</th>
+                <th className="px-3 py-2 text-left">Jugador</th>
+                <th className="px-3 py-2 text-left">Puntos totales</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {generalRanking.map((user, index) => (
+                <tr key={user.name} className="border-t">
+                  <td className="px-3 py-2 font-semibold">
+                    {getPositionLabel(index)}
+                  </td>
+                  <td className="px-3 py-2">{user.name}</td>
+                  <td className="px-3 py-2 font-bold">
+                    {user.totalPoints}
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody>
-                {ranking.map((user, index) => (
-                  <tr key={user.name} className="border-t">
-                    <td className="px-3 py-2 font-semibold">
-                      {index === 0
-                        ? "🥇"
-                        : index === 1
-                        ? "🥈"
-                        : index === 2
-                        ? "🥉"
-                        : index + 1}
-                    </td>
-
-                    <td className="px-3 py-2">{user.name}</td>
-
-                    <td className="px-3 py-2 font-bold">
-                      {user.totalPoints}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div>
-            <h3 className="mb-3 text-xl font-bold">
-              Historial de jornadas
-            </h3>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {ranking.map((user) => (
-                <div
-                  key={user.name}
-                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <h4 className="text-lg font-bold">{user.name}</h4>
-
-                    <span className="rounded-xl bg-yellow-100 px-3 py-1 text-sm font-semibold text-yellow-800">
-                      {user.totalPoints} pts
-                    </span>
-                  </div>
-
-                  <ul className="space-y-2">
-                    {user.gameweeks.map((gw, index) => (
-                      <li
-                        key={index}
-                        className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2 text-sm"
-                      >
-                        <span>{gw.gameweek}</span>
-
-                        <span className="font-bold">
-                          {gw.points} pts
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               ))}
-            </div>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ÚLTIMA JORNADA */}
+      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+        <h3 className="mb-1 text-xl font-bold text-blue-900">
+          Última jornada
+        </h3>
+
+        <p className="mb-3 text-sm text-blue-800">
+          {latestGameweek}
+        </p>
+
+        <div className="overflow-x-auto rounded-2xl border border-blue-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-blue-50">
+              <tr>
+                <th className="px-3 py-2 text-left">Pos.</th>
+                <th className="px-3 py-2 text-left">Jugador</th>
+                <th className="px-3 py-2 text-left">Puntos jornada</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {latestGameweekRanking.map((user, index) => (
+                <tr key={user.name} className="border-t">
+                  <td className="px-3 py-2 font-semibold">
+                    {getPositionLabel(index)}
+                  </td>
+                  <td className="px-3 py-2">{user.name}</td>
+                  <td className="px-3 py-2 font-bold">
+                    {user.points}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* HISTÓRICO */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-bold">Histórico de jornadas</h3>
+            <p className="text-sm text-gray-500">
+              Consulta la clasificación de cualquier jornada.
+            </p>
           </div>
-        </>
-      )}
+
+          <select
+            value={activeSelectedGameweek}
+            onChange={(e) => setSelectedGameweek(e.target.value)}
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
+          >
+            {gameweeks.map((gameweek) => (
+              <option key={gameweek} value={gameweek}>
+                {gameweek}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-left">Pos.</th>
+                <th className="px-3 py-2 text-left">Jugador</th>
+                <th className="px-3 py-2 text-left">Puntos jornada</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {selectedGameweekRanking.map((user, index) => (
+                <tr key={user.name} className="border-t">
+                  <td className="px-3 py-2 font-semibold">
+                    {getPositionLabel(index)}
+                  </td>
+                  <td className="px-3 py-2">{user.name}</td>
+                  <td className="px-3 py-2 font-bold">
+                    {user.points}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   );
 }
