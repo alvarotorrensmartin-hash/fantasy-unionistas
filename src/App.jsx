@@ -13,6 +13,7 @@ import { LineupProvider } from "./contexts/LineupContext.jsx";
 
 function Nav() {
   const { profile, signOut } = useAuth();
+  const isAdmin = profile?.display_name === "Torrens";
 
   const base =
     "flex-1 rounded-xl border px-3 py-2 text-center text-sm transition sm:flex-none";
@@ -29,6 +30,14 @@ function Nav() {
         Inicio
       </NavLink>
 
+{isAdmin && (
+  <NavLink
+    to="/admin"
+    className={({ isActive }) => `${base} ${isActive ? active : idle}`}
+  >
+    Admin
+  </NavLink>
+)}
       <NavLink
         to="/competicion"
         className={({ isActive }) => `${base} ${isActive ? active : idle}`}
@@ -64,6 +73,7 @@ function Nav() {
         >
           Login
         </NavLink>
+
       )}
     </nav>
   );
