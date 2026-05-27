@@ -7,7 +7,7 @@ export const players = [
     position: "POR",
     price: 7.5,
     number: 30,
-    photo: "/players/champions/chevalier.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 2,
@@ -16,7 +16,7 @@ export const players = [
     position: "POR",
     price: 5.5,
     number: 39,
-    photo: "/players/champions/safonov.png",
+    photo: "/players/default-player.png",
   },
 
   // PSG - DEFENSAS
@@ -27,7 +27,7 @@ export const players = [
     position: "DEF",
     price: 9.0,
     number: 2,
-    photo: "/players/champions/hakimi.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 4,
@@ -36,7 +36,7 @@ export const players = [
     position: "DEF",
     price: 8.0,
     number: 5,
-    photo: "/players/champions/marquinhos.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 5,
@@ -45,7 +45,7 @@ export const players = [
     position: "DEF",
     price: 7.0,
     number: 51,
-    photo: "/players/champions/pacho.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 6,
@@ -54,7 +54,7 @@ export const players = [
     position: "DEF",
     price: 8.5,
     number: 25,
-    photo: "/players/champions/nuno-mendes.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 7,
@@ -63,7 +63,7 @@ export const players = [
     position: "DEF",
     price: 6.5,
     number: 21,
-    photo: "/players/champions/lucas-hernandez.png",
+    photo: "/players/default-player.png",
   },
 
   // PSG - MEDIOS
@@ -74,7 +74,7 @@ export const players = [
     position: "MED",
     price: 9.0,
     number: 17,
-    photo: "/players/champions/vitinha.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 9,
@@ -83,7 +83,7 @@ export const players = [
     position: "MED",
     price: 8.0,
     number: 87,
-    photo: "/players/champions/joao-neves.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 10,
@@ -92,7 +92,7 @@ export const players = [
     position: "MED",
     price: 7.0,
     number: 8,
-    photo: "/players/champions/fabian.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 11,
@@ -101,7 +101,7 @@ export const players = [
     position: "MED",
     price: 7.0,
     number: 33,
-    photo: "/players/champions/zaire-emery.png",
+    photo: "/players/default-player.png",
   },
 
   // PSG - DELANTEROS
@@ -112,7 +112,7 @@ export const players = [
     position: "DEL",
     price: 10.0,
     number: 10,
-    photo: "/players/champions/dembele.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 13,
@@ -121,7 +121,7 @@ export const players = [
     position: "DEL",
     price: 9.5,
     number: 7,
-    photo: "/players/champions/kvaratskhelia.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 14,
@@ -130,7 +130,7 @@ export const players = [
     position: "DEL",
     price: 8.5,
     number: 29,
-    photo: "/players/champions/barcola.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 15,
@@ -139,7 +139,7 @@ export const players = [
     position: "DEL",
     price: 7.5,
     number: 9,
-    photo: "/players/champions/goncalo-ramos.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 16,
@@ -148,7 +148,7 @@ export const players = [
     position: "DEL",
     price: 7.5,
     number: 14,
-    photo: "/players/champions/doue.png",
+    photo: "/players/default-player.png",
   },
 
   // ARSENAL - PORTEROS
@@ -159,7 +159,7 @@ export const players = [
     position: "POR",
     price: 8.0,
     number: 1,
-    photo: "/players/champions/raya.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 18,
@@ -168,7 +168,7 @@ export const players = [
     position: "POR",
     price: 5.5,
     number: 13,
-    photo: "/players/champions/kepa.png",
+    photo: "/players/default-player.png",
   },
 
   // ARSENAL - DEFENSAS
@@ -179,7 +179,7 @@ export const players = [
     position: "DEF",
     price: 8.5,
     number: 2,
-    photo: "/players/champions/saliba.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 20,
@@ -188,7 +188,7 @@ export const players = [
     position: "DEF",
     price: 8.0,
     number: 6,
-    photo: "/players/champions/gabriel.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 21,
@@ -197,7 +197,7 @@ export const players = [
     position: "DEF",
     price: 7.5,
     number: 12,
-    photo: "/players/champions/timber.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 22,
@@ -206,7 +206,7 @@ export const players = [
     position: "DEF",
     price: 6.5,
     number: 49,
-    photo: "/players/champions/lewis-skelly.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 23,
@@ -215,7 +215,7 @@ export const players = [
     position: "DEF",
     price: 6.5,
     number: 4,
-    photo: "/players/champions/ben-white.png",
+    photo: "/players/default-player.png",
   },
 
   // ARSENAL - MEDIOS
@@ -226,7 +226,7 @@ export const players = [
     position: "MED",
     price: 9.0,
     number: 41,
-    photo: "/players/champions/rice.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 25,
@@ -235,7 +235,7 @@ export const players = [
     position: "MED",
     price: 8.5,
     number: 8,
-    photo: "/players/champions/odegaard.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 26,
@@ -244,7 +244,7 @@ export const players = [
     position: "MED",
     price: 7.5,
     number: 36,
-    photo: "/players/champions/zubimendi.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 27,
@@ -253,7 +253,7 @@ export const players = [
     position: "MED",
     price: 7.0,
     number: 23,
-    photo: "/players/champions/merino.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 28,
@@ -262,7 +262,7 @@ export const players = [
     position: "MED",
     price: 8.0,
     number: 10,
-    photo: "/players/champions/eze.png",
+    photo: "/players/default-player.png",
   },
 
   // ARSENAL - DELANTEROS
@@ -273,7 +273,7 @@ export const players = [
     position: "DEL",
     price: 10.0,
     number: 7,
-    photo: "/players/champions/saka.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 30,
@@ -282,7 +282,7 @@ export const players = [
     position: "DEL",
     price: 9.5,
     number: 14,
-    photo: "/players/champions/gyokeres.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 31,
@@ -291,7 +291,7 @@ export const players = [
     position: "DEL",
     price: 8.0,
     number: 11,
-    photo: "/players/champions/martinelli.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 32,
@@ -300,7 +300,7 @@ export const players = [
     position: "DEL",
     price: 8.0,
     number: 29,
-    photo: "/players/champions/havertz.png",
+    photo: "/players/default-player.png",
   },
   {
     id: 33,
@@ -309,6 +309,6 @@ export const players = [
     position: "DEL",
     price: 7.0,
     number: 19,
-    photo: "/players/champions/trossard.png",
+    photo: "/players/default-player.png",
   },
 ];
