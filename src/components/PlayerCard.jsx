@@ -20,7 +20,7 @@ export default function PlayerCard({
     >
       <div className="overflow-hidden rounded-xl bg-gray-100">
         <img
-          src={player.photo}
+          src={player.photo || "/players/default-player.png"}
           alt={player.name}
           className="h-36 w-full object-cover object-top transition duration-300 group-hover:scale-105 sm:h-48 lg:h-56"
         />

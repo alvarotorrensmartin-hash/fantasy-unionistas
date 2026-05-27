@@ -1,15 +1,15 @@
 export const competitions = [
   {
-    id: "liga-demo",
-    name: "Última jornada de Liga",
-    description: "Primera prueba del Fantasy antes del verano",
+    id: "champions-final",
+    name: "Final Champions League",
+    description: "Fantasy especial para la final PSG vs Arsenal",
     status: "open",
-    activeGameweekId: "jornada-38",
+    activeGameweekId: "champions-final-2026",
     gameweeks: [
       {
-        id: "jornada-38",
-        name: "Jornada 38",
-        deadline: "2026-05-30T14:00:00",
+        id: "champions-final-2026",
+        name: "Final Champions 2026",
+        deadline: "2026-05-30T17:30:00",
         status: "open",
       },
     ],
